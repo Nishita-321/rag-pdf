@@ -2,8 +2,9 @@
 
 | File | What it covers |
 |------|----------------|
-| [01-current-pipeline.md](01-current-pipeline.md) | What `rag.py` does today, line by line, and its known limits |
+| [01-current-pipeline.md](01-current-pipeline.md) | How the RAG pipeline in `rag.py` works, and its known limits |
 | [02-setup-and-run.md](02-setup-and-run.md) | How to install and run it on your machine |
-| [03-roadmap.md](03-roadmap.md) | The proposed next steps, in order, with what each one adds |
+| [03-roadmap.md](03-roadmap.md) | The steps, in order, and which are done |
+| [04-config-and-gemini.md](04-config-and-gemini.md) | Step 2: settings from environment variables, and Gemini as the LLM |
 
 Each future step gets its own numbered file here once it is built.

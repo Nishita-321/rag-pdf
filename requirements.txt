@@ -1,4 +1,5 @@
 chromadb
-ollama
+google-genai
 pypdf
+python-dotenv
 sentence-transformers

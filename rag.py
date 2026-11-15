@@ -5,25 +5,39 @@ Usage:
     python rag.py path/to/document.pdf
 
 Flow:  PDF -> text -> chunks -> embeddings -> vector DB
-       question -> embedding -> top matching chunks -> LLM -> answer
+       question -> embedding -> top matching chunks -> Gemini -> answer
+
+Settings live in config.py (read from environment variables / .env).
 """
 import sys
 
 import chromadb
-import ollama
+from google import genai
+from google.genai import types
 from pypdf import PdfReader
 from sentence_transformers import SentenceTransformer
 
-# ---- Settings (later these move into a config / Kubernetes ConfigMap) ----
-EMBED_MODEL = "all-MiniLM-L6-v2"   # small, fast, free embedding model
-LLM_MODEL = "llama3.2"             # any model you've pulled with Ollama
-CHUNK_SIZE = 800                   # characters per chunk
-CHUNK_OVERLAP = 150                # overlap so sentences aren't cut in half
-TOP_K = 4                          # how many chunks to give the LLM
+from config import (
+    CHROMA_PATH,
+    CHUNK_OVERLAP,
+    CHUNK_SIZE,
+    COLLECTION_NAME,
+    EMBED_MODEL,
+    GEMINI_API_KEY,
+    LLM_MODEL,
+    TOP_K,
+)
+
+SYSTEM_PROMPT = (
+    "Answer using ONLY the context provided. "
+    "Cite page numbers like (p. 3). If the answer isn't "
+    "in the context, say you don't know."
+)
 
 embedder = SentenceTransformer(EMBED_MODEL)
-db = chromadb.PersistentClient(path="./chroma_db")   # saved to disk
-collection = db.get_or_create_collection("documents")
+db = chromadb.PersistentClient(path=CHROMA_PATH)   # saved to disk
+collection = db.get_or_create_collection(COLLECTION_NAME)
+llm = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
 
 
 # ---------------------------- 1. Load ----------------------------
@@ -85,30 +99,20 @@ def answer(question):
         f"[Page {meta['page']}]\n{text}" for text, meta in hits
     )
 
-    response = ollama.chat(
+    response = llm.models.generate_content(
         model=LLM_MODEL,
-        messages=[
-            {
-                "role": "system",
-                "content": (
-                    "Answer using ONLY the context provided. "
-                    "Cite page numbers like (p. 3). If the answer isn't "
-                    "in the context, say you don't know."
-                ),
-            },
-            {
-                "role": "user",
-                "content": f"Context:\n{context}\n\nQuestion: {question}",
-            },
-        ],
+        contents=f"Context:\n{context}\n\nQuestion: {question}",
+        config=types.GenerateContentConfig(system_instruction=SYSTEM_PROMPT),
     )
-    return response["message"]["content"], hits
+    return response.text or "(Gemini returned no text.)", hits
 
 
 # ---------------------------- Main loop --------------------------
 if __name__ == "__main__":
     if len(sys.argv) != 2:
         sys.exit("Usage: python rag.py path/to/document.pdf")
+    if llm is None:
+        sys.exit("GEMINI_API_KEY is not set. Copy .env.example to .env and add your key.")
 
     index_document(sys.argv[1])
 
