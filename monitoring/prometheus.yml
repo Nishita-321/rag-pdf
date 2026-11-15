@@ -1,0 +1,8 @@
+# Prometheus: where to collect metrics from, and how often.
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: rag-pdf
+    static_configs:
+      - targets: ["app:8000"]   # the app's /metrics endpoint

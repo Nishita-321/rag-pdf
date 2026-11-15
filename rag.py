@@ -11,11 +11,13 @@ Settings live in config.py (read from environment variables / .env).
 """
 import hashlib
 import io
+import logging
 import os
 import sys
 
 import chromadb
 from google import genai
+from google.genai import errors as gemini_errors
 from google.genai import types
 from pypdf import PdfReader
 from sentence_transformers import SentenceTransformer
@@ -28,7 +30,16 @@ from config import (
     EMBED_MODEL,
     GEMINI_API_KEY,
     LLM_MODEL,
+    LOG_QUESTIONS,
     TOP_K,
+)
+from observability import (
+    GEMINI_ERRORS,
+    GEMINI_TOKENS,
+    QUESTIONS,
+    UPLOAD_BYTES,
+    log_event,
+    timed,
 )
 
 SYSTEM_PROMPT = (
@@ -83,25 +94,34 @@ def index_document(data, name):
     gets the same id no matter what it is called or where it is stored.
     """
     doc_id = hashlib.sha256(data).hexdigest()[:16]
-    pages = load_pdf(data)
-    chunks = chunk_pages(pages)
+    timings = {}
+    with timed("load", timings):
+        pages = load_pdf(data)
+    with timed("chunk", timings):
+        chunks = chunk_pages(pages)
     if not chunks:
         raise RagError("No text found. Is this a scanned PDF? (needs OCR)")
 
     texts = [c["text"] for c in chunks]
-    vectors = embedder.encode(texts).tolist()
+    with timed("embed", timings):
+        vectors = embedder.encode(texts, show_progress_bar=False).tolist()
 
-    # Remove any earlier copy first so no stale chunks are left behind.
-    collection.delete(where={"doc_id": doc_id})
-    collection.add(
-        ids=[f"{doc_id}-{i}" for i in range(len(chunks))],
-        documents=texts,
-        embeddings=vectors,
-        metadatas=[
-            {"doc_id": doc_id, "source": name, "page": c["page"]} for c in chunks
-        ],
-    )
-    return {"doc_id": doc_id, "name": name, "pages": len(pages), "chunks": len(chunks)}
+    with timed("store", timings):
+        # Remove any earlier copy first so no stale chunks are left behind.
+        collection.delete(where={"doc_id": doc_id})
+        collection.add(
+            ids=[f"{doc_id}-{i}" for i in range(len(chunks))],
+            documents=texts,
+            embeddings=vectors,
+            metadatas=[
+                {"doc_id": doc_id, "source": name, "page": c["page"]} for c in chunks
+            ],
+        )
+
+    doc = {"doc_id": doc_id, "name": name, "pages": len(pages), "chunks": len(chunks)}
+    UPLOAD_BYTES.observe(len(data))
+    log_event("document_indexed", **doc, bytes=len(data), **timings)
+    return doc
 
 
 def list_documents():
@@ -127,13 +147,14 @@ def delete_document(doc_id):
     if not collection.get(where={"doc_id": doc_id}, limit=1)["ids"]:
         return False
     collection.delete(where={"doc_id": doc_id})
+    log_event("document_deleted", doc_id=doc_id)
     return True
 
 
 # ---------------------------- 4. Retrieve ------------------------
 def retrieve(question, doc_id=None):
     """Return the TOP_K closest chunks, from one document or from all."""
-    q_vector = embedder.encode(question).tolist()
+    q_vector = embedder.encode(question, show_progress_bar=False).tolist()
     results = collection.query(
         query_embeddings=[q_vector],
         n_results=TOP_K,
@@ -148,17 +169,46 @@ def answer(question, doc_id=None):
     if llm is None:
         raise RagError("GEMINI_API_KEY is not set. Copy .env.example to .env and add your key.")
 
-    hits = retrieve(question, doc_id)
+    timings = {}
+    with timed("retrieve", timings):
+        hits = retrieve(question, doc_id)
     if not hits:
         raise RagError("Nothing to search. Upload a PDF first.")
 
     context = "\n\n".join(
         f"[{meta['source']}, page {meta['page']}]\n{text}" for text, meta in hits
     )
-    response = llm.models.generate_content(
+    try:
+        with timed("generate", timings):
+            response = llm.models.generate_content(
+                model=LLM_MODEL,
+                contents=f"Context:\n{context}\n\nQuestion: {question}",
+                config=types.GenerateContentConfig(system_instruction=SYSTEM_PROMPT),
+            )
+    except gemini_errors.APIError as e:
+        GEMINI_ERRORS.labels(code=str(e.code)).inc()
+        log_event("gemini_error", logging.ERROR, code=e.code, message=e.message, model=LLM_MODEL)
+        raise
+
+    usage = response.usage_metadata
+    tokens_in = (usage and usage.prompt_token_count) or 0
+    tokens_out = (usage and usage.candidates_token_count) or 0
+    GEMINI_TOKENS.labels(type="input").inc(tokens_in)
+    GEMINI_TOKENS.labels(type="output").inc(tokens_out)
+    QUESTIONS.inc()
+
+    fields = {"question": question} if LOG_QUESTIONS else {}
+    log_event(
+        "question_answered",
+        doc_id=doc_id or "all",
+        question_chars=len(question),
+        chunks=len(hits),
+        pages=[m["page"] for _, m in hits],
         model=LLM_MODEL,
-        contents=f"Context:\n{context}\n\nQuestion: {question}",
-        config=types.GenerateContentConfig(system_instruction=SYSTEM_PROMPT),
+        input_tokens=tokens_in,
+        output_tokens=tokens_out,
+        **timings,
+        **fields,
     )
     return response.text or "(Gemini returned no text.)", hits
 

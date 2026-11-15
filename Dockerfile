@@ -21,7 +21,7 @@ ARG EMBED_MODEL=all-MiniLM-L6-v2
 RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('${EMBED_MODEL}')"
 
 # 3. The application code.
-COPY config.py rag.py app.py ./
+COPY config.py observability.py rag.py app.py ./
 COPY static ./static
 
 # 4. Run as a normal user, not root. /data holds the vector database (a volume).

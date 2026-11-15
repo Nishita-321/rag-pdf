@@ -1,0 +1,34 @@
+// Alloy: reads the logs of this project's containers from Docker
+// and sends them to Loki.
+
+discovery.docker "containers" {
+  host = "unix:///var/run/docker.sock"
+
+  // Only this compose project, not every container on the machine.
+  filter {
+    name   = "label"
+    values = ["com.docker.compose.project=rag-pdf"]
+  }
+}
+
+discovery.relabel "containers" {
+  targets = discovery.docker.containers.targets
+
+  // Label each log line with its compose service name: app, grafana, ...
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
+    target_label  = "service"
+  }
+}
+
+loki.source.docker "containers" {
+  host       = "unix:///var/run/docker.sock"
+  targets    = discovery.relabel.containers.output
+  forward_to = [loki.write.default.receiver]
+}
+
+loki.write "default" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}

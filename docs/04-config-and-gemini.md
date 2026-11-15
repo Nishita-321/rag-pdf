@@ -39,6 +39,8 @@ This order is what makes Docker and Kubernetes easy later: the same code runs ev
 | `CHROMA_PATH` | `./chroma_db` | Where the vector database is stored |
 | `COLLECTION_NAME` | `documents` | ChromaDB collection name |
 | `MAX_UPLOAD_MB` | `20` | Largest PDF the web app accepts |
+| `LOG_LEVEL` | `INFO` | How much to log: `DEBUG`, `INFO`, `WARNING`, `ERROR` |
+| `LOG_QUESTIONS` | `false` | Put the question text in the logs |
 
 Two settings need care:
 

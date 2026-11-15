@@ -31,6 +31,11 @@ COLLECTION_NAME = os.getenv("COLLECTION_NAME", "documents")
 # ---- Web app ----
 MAX_UPLOAD_MB = int(os.getenv("MAX_UPLOAD_MB", "20"))  # biggest PDF accepted
 
+# ---- Logging ----
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
+# Put the question text in the logs? Off by default: questions are user content.
+LOG_QUESTIONS = os.getenv("LOG_QUESTIONS", "false").lower() in {"1", "true", "yes"}
+
 if CHUNK_OVERLAP >= CHUNK_SIZE:
     raise ValueError("CHUNK_OVERLAP must be smaller than CHUNK_SIZE")
 

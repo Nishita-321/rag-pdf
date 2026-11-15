@@ -8,10 +8,11 @@ Each step is small, leaves the project working, and gets its own doc when built.
 | 2 | Env config + Gemini | Done, see [04-config-and-gemini.md](04-config-and-gemini.md) | `config.py`, `.env.example` |
 | 3 | Web app: FastAPI + web page, multi-document support | Done, see [05-web-app.md](05-web-app.md) | `app.py`, `static/index.html` |
 | 4 | Docker | Done, see [06-docker.md](06-docker.md) | `Dockerfile`, `docker-compose.yml` |
-| 5 | Kubernetes | Next | `k8s/*.yaml` |
-| 6 | Quality improvements | | `rag.py` |
+| 5 | Logging, metrics and Grafana | Done, see [07-monitoring.md](07-monitoring.md) | `observability.py`, `monitoring/` |
+| 6 | Kubernetes | Next | `k8s/*.yaml` |
+| 7 | Quality improvements | | `rag.py` |
 
-## Step 5: Kubernetes
+## Step 6: Kubernetes
 
 | Object | For |
 |--------|-----|
@@ -19,10 +20,11 @@ Each step is small, leaves the project working, and gets its own doc when built.
 | ConfigMap | The non-secret settings from `config.py` |
 | Secret | `GEMINI_API_KEY` |
 | PersistentVolumeClaim | ChromaDB data |
+| Monitoring | Prometheus, Loki and Grafana in the cluster, reusing the Step 5 dashboard |
 
 One design choice appears here: the embedded on-disk ChromaDB only works with a single app replica. To scale past one, ChromaDB has to run as its own server.
 
-## Step 6: quality improvements
+## Step 7: quality improvements
 
 - Split on sentence or paragraph boundaries instead of raw character counts.
 - Skip re-embedding when an identical file is uploaded again.

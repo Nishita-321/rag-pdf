@@ -24,6 +24,7 @@ The first build takes several minutes (it downloads PyTorch and the embedding mo
 | `docker compose down` | Stop. Indexed documents are kept |
 | `docker compose down -v` | Stop and **delete** all indexed documents |
 | `PORT=9000 docker compose up -d` | Use port 9000 instead of 8000 |
+| `docker compose --profile monitoring up -d` | Also start Grafana, Prometheus and Loki, see [07-monitoring.md](07-monitoring.md) |
 
 After changing `.env`, run `docker compose up -d` again to apply it.
 
@@ -43,7 +44,7 @@ After changing `.env`, run `docker compose up -d` again to apply it.
 | `FROM python:3.12-slim` | Start from a small Python 3.12 image | Every package has a build for 3.12, so the Python 3.15 ChromaDB problem cannot happen |
 | `pip install` with the PyTorch CPU index | Install packages | The default Linux PyTorch bundles GPU libraries and is several GB larger. The app only needs CPU |
 | Download the embedding model | Store `all-MiniLM-L6-v2` inside the image | The container starts fast and does not fetch the model on first run |
-| `COPY` the code | Add `config.py`, `rag.py`, `app.py`, `static/` | Copied after the packages, so a code change rebuilds in seconds |
+| `COPY` the code | Add `config.py`, `observability.py`, `rag.py`, `app.py`, `static/` | Copied after the packages, so a code change rebuilds in seconds |
 | `USER appuser` | Run as a normal user | A bug in the app cannot act as root in the container |
 | `HEALTHCHECK` | Call `/health` every 30 seconds | Docker can tell whether the app is working, not just running |
 | `CMD uvicorn ... --host 0.0.0.0` | Start the server | `0.0.0.0` makes it reachable from outside the container |

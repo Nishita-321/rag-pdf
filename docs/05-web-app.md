@@ -40,6 +40,7 @@ Ask:     browser -> POST /ask -> rag.answer -> ChromaDB search -> Gemini -> brow
 |--------|------|------|---------|
 | `GET` | `/` | | The web page |
 | `GET` | `/health` | | `{"status": "ok", "llm_model": ..., "gemini_key_set": true}` |
+| `GET` | `/metrics` | | Prometheus metrics, see [07-monitoring.md](07-monitoring.md) |
 | `POST` | `/documents` | Form field `file` (a PDF) | `201` and the document |
 | `GET` | `/documents` | | List of documents |
 | `DELETE` | `/documents/{doc_id}` | | `204` |
