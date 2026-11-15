@@ -46,7 +46,15 @@ GEMINI_API_KEY=your-key-here
 
 `.env` is in `.gitignore`. Never commit it.
 
-## 3. Run
+## 3. Run the web app
+
+```bash
+uvicorn app:app --reload
+```
+
+Open http://localhost:8000. Details in [05-web-app.md](05-web-app.md).
+
+## 4. Or run in the terminal
 
 ```bash
 python rag.py path/to/document.pdf
@@ -72,10 +80,11 @@ TOP_K=8 python rag.py path/to/document.pdf
 |---------|-------|-----|
 | `Usage: python rag.py path/to/document.pdf` | No PDF path given | `python rag.py pdfs/test.pdf` |
 | `PydanticImportError: BaseSettings has been moved` | Old ChromaDB installed on Python 3.15 | See "Python 3.15 only" above |
+| `Address already in use` | Port 8000 is taken | `uvicorn app:app --reload --port 8001` |
 | `GEMINI_API_KEY is not set` | No `.env`, or key left empty | Do step 2 |
 | `API key not valid` (400) | Wrong or revoked key | Create a new key |
 | `404 ... model not found` | `LLM_MODEL` name is wrong or retired | Set `LLM_MODEL` in `.env` to a current Gemini model |
 | `429` / quota exceeded | Free-tier rate limit | Wait a minute, or enable billing |
 | `No text found. Is this a scanned PDF?` | PDF is images only | Use a text PDF, or add OCR |
-| Answers quote the wrong document | Old PDFs still in the database | Delete the `chroma_db/` folder and re-run |
+| Answers quote the wrong document | "All documents" is selected | Click the document you want in the list |
 | Slow first start | Embedding model downloading | One time only |

@@ -1,6 +1,6 @@
 # How the pipeline in `rag.py` works
 
-`rag.py` is a complete RAG (Retrieval-Augmented Generation) pipeline in one script. You give it a PDF, it indexes it, then you ask questions in the terminal.
+`rag.py` is a complete RAG (Retrieval-Augmented Generation) pipeline. It is used by the terminal script and by the web app.
 
 RAG means: instead of hoping the LLM already knows the answer, you find the relevant parts of your document first and paste them into the prompt.
 
@@ -31,55 +31,52 @@ Loading, chunking, embedding and search all run on your machine. Only the final 
 
 Defined in `config.py` and read from environment variables. Full list in [04-config-and-gemini.md](04-config-and-gemini.md).
 
-| Setting | Value | Meaning |
-|---------|-------|---------|
-| `EMBED_MODEL` | `all-MiniLM-L6-v2` | Embedding model |
-| `LLM_MODEL` | `gemini-2.5-flash` | Model that writes the answer |
-| `CHUNK_SIZE` | 800 | Characters per chunk |
-| `CHUNK_OVERLAP` | 150 | Characters shared between neighbouring chunks |
-| `TOP_K` | 4 | Chunks sent to the LLM per question |
-
 ### Startup
 
-Loads the embedding model, opens the database and creates the Gemini client. This runs at import time, so the first run downloads the model (about 90 MB) and every run takes a few seconds to start.
+Loads the embedding model, opens the database and creates the Gemini client. This runs at import time, so the first run downloads the model (about 90 MB) and every start takes a few seconds.
 
-### 1. Load: `load_pdf`
+### 1. Load: `load_pdf(data)`
 
-Reads each page and returns `(page_number, text)`. Pages with no text are skipped. A scanned PDF has no text at all, which is why `index_document` exits with the OCR message.
+Takes the PDF's bytes and returns `(page_number, text)` per page. Pages with no text are skipped. A scanned PDF has no text at all, which is what triggers the OCR error.
 
-### 2. Chunk: `chunk_pages`
+### 2. Chunk: `chunk_pages(pages)`
 
 Cuts each page into 800-character pieces, moving forward 650 characters each time (800 - 150). So each chunk repeats the last 150 characters of the previous one. Each chunk remembers its page number.
 
 Why chunk at all: an embedding of a whole page is too blurry to match a specific question, and small chunks keep the prompt short.
 
-### 3. Index: `index_document`
+### 3. Index: `index_document(data, name)`
 
-Embeds every chunk and writes text, vector and metadata (`source`, `page`) to ChromaDB. It uses `upsert` with ids like `myfile.pdf-0`, so running the same file again overwrites instead of duplicating.
+1. Computes the document id: the first 16 characters of the SHA-256 hash of the file. The same file always gets the same id.
+2. Loads, chunks and embeds.
+3. Deletes any chunks already stored under that id, then adds the new ones with metadata `doc_id`, `source` (the file name) and `page`.
 
-### 4. Retrieve: `retrieve`
+Returns `{"doc_id", "name", "pages", "chunks"}`.
 
-Embeds the question with the same model and asks ChromaDB for the 4 closest chunks. "Closest" means the vectors point in a similar direction, which roughly means similar meaning.
+`list_documents()` and `delete_document(doc_id)` read and remove what is stored.
 
-### 5. Generate: `answer`
+### 4. Retrieve: `retrieve(question, doc_id=None)`
 
-Builds a context block with a `[Page N]` label on each chunk, then sends it to Gemini with a system instruction that says: use only this context, cite pages, say "I don't know" if it is not there. Returns the answer and the chunks used.
+Embeds the question with the same model and asks ChromaDB for the 4 closest chunks. With a `doc_id` it searches only that document; without one it searches all of them. "Closest" means the vectors point in a similar direction, which roughly means similar meaning.
+
+### 5. Generate: `answer(question, doc_id=None)`
+
+Builds a context block with a `[file name, page N]` label on each chunk, then sends it to Gemini with a system instruction that says: use only this context, cite pages, say "I don't know" if it is not there. Returns the answer and the chunks used.
+
+### Errors
+
+Problems the user can fix (unreadable PDF, no text, missing key, nothing indexed) raise `RagError`. The terminal script prints it; the web app returns it as a `400`.
 
 ### Main loop
 
-Indexes the PDF from the command line, then loops on questions until you type `exit`.
+`python rag.py file.pdf` indexes that PDF, then answers questions about that PDF only, until you type `exit`.
 
 ## Known limits
 
-These are the things worth fixing as the project grows, most important first.
-
 | # | Problem | Effect |
 |---|---------|--------|
-| 1 | Retrieval searches **every document ever indexed**, not only the one you passed in | Index `a.pdf` yesterday and `b.pdf` today, and answers about `b.pdf` can quote `a.pdf` |
-| 2 | Chunk ids use the path exactly as typed | `doc.pdf` and `./doc.pdf` are stored as two documents |
-| 3 | Re-indexing a PDF that got shorter leaves old chunks behind | Stale text can still be retrieved |
-| 4 | Chunks are cut by character count | Words and sentences are split mid-way; a chunk never spans two pages |
-| 5 | No error handling around the Gemini call | A bad key, rate limit or network failure crashes the script with a stack trace |
-| 6 | "Sources" lists every retrieved page | It shows what was retrieved, not what the LLM actually used |
-| 7 | No relevance cutoff | An off-topic question still gets 4 chunks, however poor the match |
-| 8 | Every run re-embeds the whole PDF | Slow for large files, even when nothing changed |
+| 1 | Chunks are cut by character count | Words and sentences are split mid-way; a chunk never spans two pages |
+| 2 | "Sources" lists every retrieved chunk | It shows what was retrieved, not what Gemini actually used |
+| 3 | No relevance cutoff | An off-topic question still gets 4 chunks, however poor the match |
+| 4 | Every upload re-embeds the whole PDF | Slow for large files, even when nothing changed |
+| 5 | No conversation memory | Each question is answered on its own |

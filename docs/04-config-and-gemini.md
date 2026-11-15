@@ -38,6 +38,7 @@ This order is what makes Docker and Kubernetes easy later: the same code runs ev
 | `TOP_K` | `4` | Chunks sent to Gemini per question |
 | `CHROMA_PATH` | `./chroma_db` | Where the vector database is stored |
 | `COLLECTION_NAME` | `documents` | ChromaDB collection name |
+| `MAX_UPLOAD_MB` | `20` | Largest PDF the web app accepts |
 
 Two settings need care:
 

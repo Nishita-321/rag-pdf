@@ -28,6 +28,9 @@ TOP_K = int(os.getenv("TOP_K", "4"))                    # chunks given to the LL
 CHROMA_PATH = os.getenv("CHROMA_PATH", "./chroma_db")
 COLLECTION_NAME = os.getenv("COLLECTION_NAME", "documents")
 
+# ---- Web app ----
+MAX_UPLOAD_MB = int(os.getenv("MAX_UPLOAD_MB", "20"))  # biggest PDF accepted
+
 if CHUNK_OVERLAP >= CHUNK_SIZE:
     raise ValueError("CHUNK_OVERLAP must be smaller than CHUNK_SIZE")
 
