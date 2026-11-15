@@ -7,13 +7,9 @@ Each step is small, leaves the project working, and gets its own doc when built.
 | 1 | Plain script | Done | `rag.py` |
 | 2 | Env config + Gemini | Done, see [04-config-and-gemini.md](04-config-and-gemini.md) | `config.py`, `.env.example` |
 | 3 | Web app: FastAPI + web page, multi-document support | Done, see [05-web-app.md](05-web-app.md) | `app.py`, `static/index.html` |
-| 4 | Docker | Next | `Dockerfile` |
-| 5 | Kubernetes | | `k8s/*.yaml` |
+| 4 | Docker | Done, see [06-docker.md](06-docker.md) | `Dockerfile`, `docker-compose.yml` |
+| 5 | Kubernetes | Next | `k8s/*.yaml` |
 | 6 | Quality improvements | | `rag.py` |
-
-## Step 4: Docker
-
-One container for the app. Settings come in as environment variables, ChromaDB data goes on a volume so it survives restarts. Since Gemini is a hosted API, there is no LLM container to run.
 
 ## Step 5: Kubernetes
 

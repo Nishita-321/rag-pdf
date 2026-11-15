@@ -1,0 +1,12 @@
+# Keep secrets and local data out of the image.
+.env
+.venv/
+chroma_db/
+pdfs/
+.git/
+.gitignore
+__pycache__/
+docs/
+Dockerfile
+docker-compose.yml
+.dockerignore

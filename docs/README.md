@@ -7,5 +7,6 @@
 | [03-roadmap.md](03-roadmap.md) | The steps, in order, and which are done |
 | [04-config-and-gemini.md](04-config-and-gemini.md) | Step 2: settings from environment variables, and Gemini as the LLM |
 | [05-web-app.md](05-web-app.md) | Step 3: the FastAPI web app, its API and design decisions |
+| [06-docker.md](06-docker.md) | Step 4: running the app in Docker on any machine |
 
 Each future step gets its own numbered file here once it is built.

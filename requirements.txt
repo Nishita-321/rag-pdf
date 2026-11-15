@@ -1,8 +1,9 @@
-chromadb
-fastapi
-google-genai
-pypdf
-python-dotenv
-python-multipart
-sentence-transformers
-uvicorn[standard]
+chromadb==1.5.9
+fastapi==0.163.0
+google-genai==3.3.0
+pypdf==7.1.0
+python-dotenv==1.2.4
+python-multipart==0.0.33
+sentence-transformers==6.3.0
+torch==2.15.0
+uvicorn[standard]==0.54.0

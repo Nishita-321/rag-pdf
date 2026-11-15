@@ -1,0 +1,15 @@
+services:
+  app:
+    build: .
+    image: rag-pdf
+    ports:
+      - "${PORT:-8000}:8000"        # host:container. PORT=9000 docker compose up  -> localhost:9000
+    env_file: .env                  # GEMINI_API_KEY and the other settings
+    environment:
+      CHROMA_PATH: /data/chroma_db  # always store the database on the volume
+    volumes:
+      - rag_data:/data              # survives restarts and rebuilds
+    restart: unless-stopped
+
+volumes:
+  rag_data:

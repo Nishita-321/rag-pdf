@@ -1,5 +1,7 @@
 # Setup and run
 
+The quickest way to run the app on any machine is Docker: see [06-docker.md](06-docker.md). The steps below are for running it directly with Python, which is handier while developing.
+
 ## 1. Python environment
 
 ```bash
