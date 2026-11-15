@@ -1,0 +1,71 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app
+  labels:
+    app: app
+spec:
+  # One replica only: ChromaDB is a database on this pod's disk, so a second
+  # pod would have its own, separate set of documents.
+  replicas: 1
+  # Stop the old pod before starting the new one, because both cannot
+  # use the same disk at once.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: app
+  template:
+    metadata:
+      labels:
+        app: app
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000          # "appuser" in the Dockerfile
+        runAsGroup: 1000
+        fsGroup: 1000            # makes the mounted disk writable by appuser
+      containers:
+        - name: app
+          image: rag-pdf         # real name and tag are set in kustomization.yaml
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: app-config
+            - secretRef:
+                name: app-secret
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          resources:
+            requests:            # reserved for the pod
+              cpu: 250m
+              memory: 768Mi
+            limits:              # the pod is restarted if it uses more memory
+              memory: 2Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+          # Startup: loading the embedding model takes a while. Allow up to 2.5 minutes.
+          startupProbe:
+            httpGet: {path: /health, port: http}
+            periodSeconds: 5
+            failureThreshold: 30
+          # Readiness: only send traffic while /health answers.
+          readinessProbe:
+            httpGet: {path: /health, port: http}
+            periodSeconds: 10
+          # Liveness: restart the container if /health stops answering.
+          livenessProbe:
+            httpGet: {path: /health, port: http}
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 3
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: app-data

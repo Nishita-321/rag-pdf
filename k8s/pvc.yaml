@@ -1,0 +1,11 @@
+# Disk space for the vector database. It outlives the pod, so indexed
+# documents survive restarts and upgrades.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: app-data
+spec:
+  accessModes: [ReadWriteOnce]   # mounted by one node at a time
+  resources:
+    requests:
+      storage: 1Gi

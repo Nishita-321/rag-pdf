@@ -17,7 +17,7 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 
 # ---- Models ----
 EMBED_MODEL = os.getenv("EMBED_MODEL", "all-MiniLM-L6-v2")  # local embedding model
-LLM_MODEL = os.getenv("LLM_MODEL", "gemini-2.5-flash")      # Gemini model that answers
+LLM_MODEL = os.getenv("LLM_MODEL", "gemini-3.5-flash")      # Gemini model that answers
 
 # ---- Chunking / retrieval ----
 CHUNK_SIZE = int(os.getenv("CHUNK_SIZE", "800"))        # characters per chunk

@@ -1,0 +1,33 @@
+// Alloy on Kubernetes: reads the logs of the pods in the rag-pdf namespace
+// through the Kubernetes API and sends them to Loki.
+// (monitoring/alloy.alloy is the Docker version of this file.)
+
+discovery.kubernetes "pods" {
+  role = "pod"
+
+  namespaces {
+    names = ["rag-pdf"]
+  }
+}
+
+discovery.relabel "pods" {
+  targets = discovery.kubernetes.pods.targets
+
+  // Label each log line with the pod's "app" label: app, grafana, ...
+  // Same "service" label as the Docker setup, so the dashboard works in both.
+  rule {
+    source_labels = ["__meta_kubernetes_pod_label_app"]
+    target_label  = "service"
+  }
+}
+
+loki.source.kubernetes "pods" {
+  targets    = discovery.relabel.pods.output
+  forward_to = [loki.write.default.receiver]
+}
+
+loki.write "default" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}

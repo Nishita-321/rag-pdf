@@ -1,0 +1,33 @@
+# Deploys monitoring to Kubernetes:  kubectl apply -k monitoring/
+# (Deploy the app first with: kubectl apply -k k8s/)
+#
+# This file lives here, next to the config files, because Kustomize can only
+# read files inside its own folder. The same prometheus.yml, Grafana
+# datasources and dashboard are used by Docker Compose and by Kubernetes.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: rag-pdf
+
+resources:
+  - k8s/prometheus.yaml
+  - k8s/loki.yaml
+  - k8s/alloy.yaml
+  - k8s/grafana.yaml
+
+configMapGenerator:
+  - name: prometheus-config
+    files:
+      - prometheus.yml
+  - name: alloy-config
+    files:
+      - config.alloy=alloy-k8s.alloy
+  - name: grafana-datasources
+    files:
+      - grafana/provisioning/datasources/datasources.yml
+  - name: grafana-dashboard-provider
+    files:
+      - grafana/provisioning/dashboards/dashboards.yml
+  - name: grafana-dashboards
+    files:
+      - grafana/dashboards/rag-pdf.json

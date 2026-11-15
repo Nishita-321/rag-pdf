@@ -1,0 +1,31 @@
+# Deploys the app:  kubectl apply -k k8s/
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: rag-pdf
+
+resources:
+  - namespace.yaml
+  - pvc.yaml
+  - deployment.yaml
+  - service.yaml
+
+# The image the Deployment runs. To use a registry, change newName / newTag:
+#   newName: yourname/rag-pdf
+images:
+  - name: rag-pdf
+    newName: rag-pdf
+    newTag: "1.0"
+
+# ConfigMap and Secret are generated from the two .env files.
+# Kustomize adds a hash of the contents to their names, so changing a value
+# and re-applying restarts the app automatically.
+configMapGenerator:
+  - name: app-config
+    envs:
+      - config.env
+
+secretGenerator:
+  - name: app-secret
+    envs:
+      - secret.env          # not in git. Create it: see docs/08-kubernetes.md

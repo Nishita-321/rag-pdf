@@ -1,0 +1,14 @@
+# A stable name and address for the app inside the cluster: http://app:8000
+apiVersion: v1
+kind: Service
+metadata:
+  name: app
+  labels:
+    app: app
+spec:
+  selector:
+    app: app
+  ports:
+    - name: http
+      port: 8000
+      targetPort: http

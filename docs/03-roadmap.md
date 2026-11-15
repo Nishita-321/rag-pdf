@@ -9,20 +9,8 @@ Each step is small, leaves the project working, and gets its own doc when built.
 | 3 | Web app: FastAPI + web page, multi-document support | Done, see [05-web-app.md](05-web-app.md) | `app.py`, `static/index.html` |
 | 4 | Docker | Done, see [06-docker.md](06-docker.md) | `Dockerfile`, `docker-compose.yml` |
 | 5 | Logging, metrics and Grafana | Done, see [07-monitoring.md](07-monitoring.md) | `observability.py`, `monitoring/` |
-| 6 | Kubernetes | Next | `k8s/*.yaml` |
-| 7 | Quality improvements | | `rag.py` |
-
-## Step 6: Kubernetes
-
-| Object | For |
-|--------|-----|
-| Deployment + Service | The app |
-| ConfigMap | The non-secret settings from `config.py` |
-| Secret | `GEMINI_API_KEY` |
-| PersistentVolumeClaim | ChromaDB data |
-| Monitoring | Prometheus, Loki and Grafana in the cluster, reusing the Step 5 dashboard |
-
-One design choice appears here: the embedded on-disk ChromaDB only works with a single app replica. To scale past one, ChromaDB has to run as its own server.
+| 6 | Kubernetes | Done, see [08-kubernetes.md](08-kubernetes.md) | `k8s/`, `monitoring/k8s/` |
+| 7 | Quality improvements | Optional | `rag.py` |
 
 ## Step 7: quality improvements
 
@@ -33,6 +21,9 @@ One design choice appears here: the embedded on-disk ChromaDB only works with a 
 
 ## Optional later
 
+- Run ChromaDB as its own server, so the app can have more than one replica
+- Ingress with HTTPS and a login, for running on a public cluster
+- Alerts in Grafana
 - OCR for scanned PDFs
 - Streaming answers token by token
 - Reranking retrieved chunks for better accuracy

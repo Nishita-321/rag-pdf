@@ -31,7 +31,7 @@ This order is what makes Docker and Kubernetes easy later: the same code runs ev
 | Variable | Default | Meaning |
 |----------|---------|---------|
 | `GEMINI_API_KEY` | none, **required** | Your Gemini key |
-| `LLM_MODEL` | `gemini-2.5-flash` | Gemini model that writes the answer |
+| `LLM_MODEL` | `gemini-3.5-flash` | Gemini model that writes the answer |
 | `EMBED_MODEL` | `all-MiniLM-L6-v2` | Local embedding model |
 | `CHUNK_SIZE` | `800` | Characters per chunk |
 | `CHUNK_OVERLAP` | `150` | Characters shared between neighbouring chunks; must be less than `CHUNK_SIZE` |

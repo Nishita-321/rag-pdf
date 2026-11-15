@@ -1,0 +1,6 @@
+# A namespace keeps everything for this project together and separate
+# from anything else in the cluster.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: rag-pdf
