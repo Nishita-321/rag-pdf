@@ -1,5 +1,7 @@
 # RAG PDF
 
+[![CI/CD](https://github.com/Nishita-321/rag-pdf/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/Nishita-321/rag-pdf/actions/workflows/ci-cd.yml)
+
 Upload PDFs and ask questions about them. Answers come from the documents themselves, with page citations and the source passages shown.
 
 It is a small, complete RAG (Retrieval-Augmented Generation) application: a web page, an HTTP API, a vector database, monitoring, and deployment files for Docker and Kubernetes.
@@ -171,7 +173,32 @@ All settings are environment variables with defaults, set in `.env` (Docker, Pyt
 | `Dockerfile`, `docker-compose.yml` | Docker image and services |
 | `k8s/` | Kubernetes manifests for the app |
 | `monitoring/` | Prometheus, Loki, Alloy and Grafana config, for Docker and Kubernetes |
+| `.github/workflows/ci-cd.yml` | CI/CD pipeline (GitHub Actions) |
 | `docs/` | Step-by-step documentation |
+
+## CI/CD
+
+[.github/workflows/ci-cd.yml](.github/workflows/ci-cd.yml) runs on GitHub Actions.
+
+| Job | Runs on | Does |
+|-----|---------|------|
+| Lint Python | every push and pull request | `ruff` checks for syntax errors, undefined names and unused imports |
+| Validate Kubernetes manifests | every push and pull request | Builds `k8s/` and `monitoring/` with Kustomize and validates them with `kubeconform` |
+| Build and smoke-test image | every push and pull request | Builds the Docker image, starts it, and checks `/health`, `/`, `/documents`, `/metrics` and the error responses (400, 404, 422) |
+| Publish | push to `main` or a `v*` tag | Pushes the tested image to `ghcr.io/nishita-321/rag-pdf`, tagged `latest`, the commit SHA, and the version for tags |
+
+No secrets are needed: the smoke test runs without a Gemini key, and publishing uses the built-in `GITHUB_TOKEN`.
+
+To deploy a published image to Kubernetes, set it in `k8s/kustomization.yaml`:
+
+```yaml
+images:
+  - name: rag-pdf
+    newName: ghcr.io/nishita-321/rag-pdf
+    newTag: "1.0.0"
+```
+
+then run `kubectl apply -k k8s/`.
 
 ## Documentation
 

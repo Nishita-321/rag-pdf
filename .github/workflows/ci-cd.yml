@@ -1,0 +1,138 @@
+# CI/CD for RAG PDF
+#
+# On every push and pull request (CI):
+#   1. lint      - Python syntax errors, undefined names, unused imports (ruff)
+#   2. k8s       - build the Kustomize manifests and validate them against the Kubernetes schema
+#   3. docker    - build the image, start it, and smoke-test the API
+#
+# On a push to main or a version tag like v1.2.0 (CD):
+#   4. publish   - push the tested image to GitHub Container Registry (ghcr.io)
+#
+# No Gemini key is needed: the smoke test checks the app starts and rejects
+# bad input correctly, which works without calling Gemini.
+
+name: CI/CD
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint Python
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install ruff==0.17.5
+      # E9 = syntax errors, F = pyflakes (undefined names, unused imports, ...)
+      - run: ruff check --isolated --select E9,F .
+
+  k8s:
+    name: Validate Kubernetes manifests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # The real secret.env is not in git; the empty template is enough to build the manifests.
+      - run: cp k8s/secret.env.example k8s/secret.env
+      - name: Install kubeconform
+        run: |
+          curl -sSL https://github.com/yannh/kubeconform/releases/download/v0.6.7/kubeconform-linux-amd64.tar.gz \
+            | tar -xz -C /usr/local/bin kubeconform
+      - name: Build and validate k8s/
+        run: kubectl kustomize k8s/ | kubeconform -strict -summary -
+      - name: Build and validate monitoring/
+        run: kubectl kustomize monitoring/ | kubeconform -strict -summary -
+
+  docker:
+    name: Build and smoke-test image
+    runs-on: ubuntu-latest
+    needs: [lint, k8s]
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: rag-pdf:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Start container
+        run: docker run -d --name app -p 8000:8000 rag-pdf:ci
+
+      - name: Wait for /health
+        run: |
+          for i in $(seq 1 60); do
+            if curl -fs http://localhost:8000/health; then echo; exit 0; fi
+            sleep 2
+          done
+          echo "App did not become healthy"; docker logs app; exit 1
+
+      - name: Smoke-test the API
+        run: |
+          set -e
+          code() { curl -s -o /dev/null -w "%{http_code}" "$@"; }
+          expect() { [ "$1" = "$2" ] || { echo "FAIL: $3 returned $1, expected $2"; exit 1; }; echo "ok: $3 -> $1"; }
+
+          expect "$(code http://localhost:8000/)"          200 "GET /"
+          expect "$(code http://localhost:8000/documents)" 200 "GET /documents"
+          expect "$(code http://localhost:8000/metrics)"   200 "GET /metrics"
+          curl -s http://localhost:8000/metrics | grep -q '^rag_documents' && echo "ok: metrics contain rag_documents"
+
+          echo "not a pdf" > fake.pdf
+          expect "$(code -F file=@fake.pdf http://localhost:8000/documents)" 400 "upload non-PDF"
+          expect "$(code -H 'Content-Type: application/json' -d '{"question":""}' http://localhost:8000/ask)" 422 "empty question"
+          expect "$(code -X DELETE http://localhost:8000/documents/doesnotexist)" 404 "delete unknown doc"
+
+      - name: Show logs on failure
+        if: failure()
+        run: docker logs app
+
+      # ---------------- CD: publish the tested image ----------------
+      - name: Image tags
+        id: meta
+        if: github.event_name == 'push'
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=sha
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=semver,pattern={{version}}
+
+      - name: Log in to GitHub Container Registry
+        if: github.event_name == 'push'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push image
+        if: github.event_name == 'push'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
