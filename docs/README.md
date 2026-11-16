@@ -12,6 +12,7 @@ Three ways to run the app, simplest first:
 
 | File | What it covers |
 |------|----------------|
+| [00-complete-workflow.md](00-complete-workflow.md) | **Start here.** The whole project in plain language: what was built, in what order, and how the pieces connect |
 | [01-current-pipeline.md](01-current-pipeline.md) | How the RAG pipeline in `rag.py` works, and its known limits |
 | [02-setup-and-run.md](02-setup-and-run.md) | How to install and run it on your machine |
 | [03-roadmap.md](03-roadmap.md) | The steps, in order, and which are done |

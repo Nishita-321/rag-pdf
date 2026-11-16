@@ -177,6 +177,7 @@ All settings are environment variables with defaults, set in `.env` (Docker, Pyt
 
 | Doc | Covers |
 |-----|--------|
+| [00-complete-workflow.md](docs/00-complete-workflow.md) | Start here: the whole project explained in plain language |
 | [01-current-pipeline.md](docs/01-current-pipeline.md) | How the RAG pipeline works |
 | [02-setup-and-run.md](docs/02-setup-and-run.md) | Python setup and troubleshooting |
 | [03-roadmap.md](docs/03-roadmap.md) | What was built, in order, and what could come next |
